@@ -108,14 +108,16 @@ async function createContractUser(
 
   console.log(accountId);
 
+  let randomKey = nearAPI.utils.KeyPair.fromRandom("ed25519");
+
   let resp = await masterAccount.createAccount(
     accountId,
-    masterPubKey,
+    randomKey.getPublicKey(),
     new BN(10).pow(new BN(28))
   );
   console.log("accountId: " + JSON.stringify(resp))
     
-  keyStore.setKey(config.networkId, accountId, masterKey);
+  keyStore.setKey(config.networkId, accountId, randomKey);
   const account = new nearAPI.Account(near.connection, accountId);
   const accountUseContract = new nearAPI.Contract(
     account,
