@@ -45,11 +45,11 @@ pub struct FTContract {
 #[near_bindgen]
 impl FTContract {
     fn on_account_closed(&mut self, account_id: AccountId, balance: Balance) {
-        env::panic_str("an_account_closed");
+        env::log_str(&format!("Closed @{} with {}", account_id, balance));
     }
 
     fn on_tokens_burned(&mut self, account_id: AccountId, amount: Balance) {
-        env::panic_str("on_tokens_burned");
+        env::log_str(&format!("Account @{} burned {}", account_id, amount));
     }
 
     #[init]

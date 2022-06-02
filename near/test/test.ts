@@ -27,6 +27,7 @@ function getConfig(env: any) {
         masterAccount: "test.near",
         wormholeAccount: Math.floor(Math.random() * 10000).toString() + "wormhole.test.near",
         tokenAccount: Math.floor(Math.random() * 10000).toString() + "token.test.near",
+        userAccount: Math.floor(Math.random() * 10000).toString() + "user.test.near",
       };
   }
 }
@@ -43,23 +44,37 @@ const tokenMethods = {
 let config :any;
 let masterAccount : any;
 let masterKey : any;
-let pubKey : any;
+let masterPubKey : any;
 let keyStore : any;
 let near : any;
+
+let userAccount : any;
+let userKey : any;
+let userPubKey : any;
 
 async function initNear() {
   config = getConfig(process.env.NEAR_ENV || "sandbox");
 
   // Retrieve the validator key directly in the Tilt environment
   const response = await fetch('http://localhost:3031/validator_key.json');
+
   const keyFile = await response.json();
+
+  console.log(keyFile);
 
   masterKey = nearAPI.utils.KeyPair.fromString(
     keyFile.secret_key || keyFile.private_key
   );
-  pubKey = masterKey.getPublicKey();
+  masterPubKey = masterKey.getPublicKey();
+
+  userKey = nearAPI.utils.KeyPair.fromRandom("ed25519");
+  console.log(userKey);
+
   keyStore = new nearAPI.keyStores.InMemoryKeyStore();
+
   keyStore.setKey(config.networkId, config.masterAccount, masterKey);
+  keyStore.setKey(config.networkId, config.userAccount, userKey);
+
   near = await nearAPI.connect({
     deps: {
       keyStore,
@@ -68,7 +83,20 @@ async function initNear() {
     nodeUrl: config.nodeUrl,
   });
   masterAccount = new nearAPI.Account(near.connection, config.masterAccount);
-  console.log("Finish init NEAR: " + JSON.stringify(await masterAccount.getAccountBalance()));
+
+  console.log("Finish init NEAR masterAccount: " + JSON.stringify(await masterAccount.getAccountBalance()));
+
+  let resp = await masterAccount.createAccount(config.userAccount, userKey.getPublicKey(), new BN(10).pow(new BN(25)));
+
+  console.log(resp);
+
+  userAccount = new nearAPI.Account(near.connection, config.userAccount);
+
+  console.log("Finish init NEAR userAccount: " + JSON.stringify(await userAccount.getAccountBalance()));
+
+  console.log(await userAccount.sendMoney(config.masterAccount, nearAPI.utils.format.parseNearAmount("1.5")));;
+
+  console.log("Sent some money: " + JSON.stringify(await userAccount.getAccountBalance()));
 }
 
 async function createContractUser(
@@ -82,7 +110,7 @@ async function createContractUser(
 
   let resp = await masterAccount.createAccount(
     accountId,
-    pubKey,
+    masterPubKey,
     new BN(10).pow(new BN(28))
   );
   console.log("accountId: " + JSON.stringify(resp))
@@ -103,14 +131,14 @@ async function initTest() {
 
   const _wormholeAccount = await masterAccount.createAndDeployContract(
     config.wormholeAccount,
-    pubKey,
+    masterPubKey,
     wormholeContract,
     new BN(10).pow(new BN(27))
   );
 
   const _tokenAccount = await masterAccount.createAndDeployContract(
     config.tokenAccount,
-    pubKey,
+    masterPubKey,
     tokenContract,
     new BN(10).pow(new BN(27))
   );
@@ -126,6 +154,14 @@ async function initTest() {
     config.tokenAccount,
     tokenMethods
   );
+
+//  const userUseContract = await createContractUser(
+//    "user",
+//    config.userAccount,
+//    tokenMethods
+//  );
+//
+//  console.log(userUseContract.account.accountId);
 
   console.log("Finish deploy contracts and create test accounts");
   return { wormholeUseContract, tokenUseContract };
