@@ -131,16 +131,22 @@ async function initTest() {
   const wormholeContract = await fs.readFile("./contracts/wormhole/target/wasm32-unknown-unknown/release/wormhole.wasm");
   const tokenContract = await fs.readFile("./contracts/portal/target/wasm32-unknown-unknown/release/portal.wasm");
 
+  let randomKey = nearAPI.utils.KeyPair.fromRandom("ed25519");
+  keyStore.setKey(config.networkId, config.wormholeAccount, randomKey);
+
   const _wormholeAccount = await masterAccount.createAndDeployContract(
     config.wormholeAccount,
-    masterPubKey,
+    randomKey.getPublicKey(),
     wormholeContract,
     new BN(10).pow(new BN(27))
   );
 
+  randomKey = nearAPI.utils.KeyPair.fromRandom("ed25519");
+  keyStore.setKey(config.networkId, config.tokenAccount, randomKey);
+
   const _tokenAccount = await masterAccount.createAndDeployContract(
     config.tokenAccount,
-    masterPubKey,
+    randomKey.getPublicKey(),
     tokenContract,
     new BN(10).pow(new BN(27))
   );
